@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bootstrap demo</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-KK94CHFLLe+nY2dmCWGMq91rCGa5gtU4mk92HdvYe+M/SXH301p5ILy+dN9+nJOZ"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <div class="row text-center my-5">
+        <p>
+          Work by Mustafa Zariwala - with<strong> love and passion </strong>
+        </p>
+      </div>
+      <div class="row">
+        <div class="col">
+          <form class="form-inline" name="myForm" action="" method="GET">
+            <div class="input-group">
+              <input
+                type="text"
+                class="form-control"
+                id="authorName"
+                name="authorName"
+                value="Julie Smith"
+                aria-describedby="authorName"
+                placeholder="Author Name"
+              />
+              <input
+                type="date"
+                class="form-control"
+                id="dateFrom"
+                name="dateFrom"
+                aria-describedby="dateFrom"
+                placeholder="Author Name"
+              />
+              <input
+                type="date"
+                class="form-control"
+                id="dateTo"
+                name="dateTo"
+                aria-describedby="dateTo"
+                placeholder="Author Name"
+              />
+              <input
+                class="btn btn-primary my-2 my-sm-0"
+                type="button"
+                name="button"
+                value="Search the Author"
+                onClick="testResults(this.form)"
+              />
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="row">
+        <div class="accordion my-3" id="accordionExplainStep">
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button
+                class="accordion-button"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#collapseOne"
+                aria-expanded="true"
+                aria-controls="collapseOne"
+              >
+                <strong>Steps to create this simple website</strong>
+              </button>
+            </h2>
+            <div
+              id="collapseOne"
+              class="accordion-collapse collapse show"
+              data-bs-parent="#accordionExplainStep"
+            >
+              <div class="accordion-body">
+                <ul>
+                  <li>
+                    Created a HTML template with <strong>Bootstrap</strong>
+                  </li>
+                  <li>
+                    Used fetch for a GET request to
+                    <strong> Open Library API </strong>to get author data
+                  </li>
+                  <li>
+                    Used <strong> Mermaid JS </strong> to display this data in a
+                    timeline
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div id="output"></div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+
+    <script type="text/javascript">
+      mermaid.initialize({ startOnLoad: false });
+
+      var output = document.getElementById("output");
+
+      function testResults(form) {
+        var authorName = form.authorName.value;
+        var dateFrom = form.dateFrom.value;
+        var dateTo = form.dateTo.value;
+
+        // Form Validation
+        if (!authorName || !dateFrom || !dateTo) {
+          alert(
+            `Please enter a valid ${!authorName ? "Author name" : ""}${
+              !dateFrom ? ", Date From" : ""
+            }${!dateTo ? ", Date To" : ""} to continue.`
+          );
+          return;
+        }
+
+        // URL construction
+        let url = `https://openlibrary.org/search.json?author=${encodeURIComponent(
+          authorName
+        )}&fields=first_publish_year,title&q=first_publish_year:[${
+          dateFrom.split("-")[0]
+        }+TO+${dateTo.split("-")[0]}]&sort=old`;
+
+        // Animation and Loading display in HTML
+        document.getElementById(
+          "output"
+        ).innerHTML = `<br/><br/><h6 class="text-center">Loading...</h6>`;
+        document
+          .getElementById("output")
+          .classList.add("animate__animated", "animate__backInDown");
+
+        // Fetch API to get Author Data
+        fetch(url, {
+          method: "get",
+        })
+          .then((response) => response.json())
+          .then((response) => {
+            // If no Books are found for author, Display No Data found
+            if (response.docs.length == 0) {
+              return (document.getElementById(
+                "output"
+              ).innerHTML = `<br/><br/><h6 class="text-center">No Data Found</h6>`);
+            }
+
+            //  If data is there create a mermaid JS timeline by performing some logic
+            let mermaidPreFill =
+              "timeline \n title Publishing History of Author " + authorName;
+
+            const first_publish_years = [
+              ...new Set(
+                response.docs.reduce((a, c) => [...a, c.first_publish_year], [])
+              ),
+            ];
+            let yearHad;
+            let booksHad;
+            for (let year of first_publish_years) {
+              let fiterYearsData = response.docs.filter(
+                (item) => item.first_publish_year == year
+              );
+              yearHad = year;
+              booksHad = "";
+              for (let yearsData of fiterYearsData) {
+                booksHad += ` : ${yearsData.title.replaceAll(
+                  "[^A-Za-z0-9]",
+                  ""
+                )}`;
+              }
+              mermaidPreFill += `
+                ${yearHad} ${booksHad} \n`;
+            }
+
+            output.innerHTML = mermaidPreFill;
+            mermaid.renderAsync("theGraph", mermaidPreFill, function (svgCode) {
+              output.innerHTML = svgCode;
+            });
+
+            // Remove animation Class
+            setTimeout(() => {
+              document
+                .getElementById("output")
+                .classList.remove("animate__animated", "animate__backInDown");
+            }, 1000);
+            setTimeout();
+          })
+          .catch((error) => {
+            console.error("foo: " + error);
+          });
+      }
+    </script>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-ENjdO4Dr2bkBIFxQpeoTz1HIcje39Wm4jDKdf19U8gI4ddQ3GYNS7NTKfAdVQSZe"
+      crossorigin="anonymous"
+    ></script>
+  </body>
+</html>
